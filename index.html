@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de Vídeo em ASCII Online</title>
+    <title>Vídeo ASCII Online sem Erro CORS</title>
     <style>
         body {
             background-color: #0d1117;
@@ -17,31 +17,36 @@
             font-family: monospace;
         }
 
-        .controles {
+        .painel {
+            background-color: #161b22;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 90%;
+            max-width: 550px;
+        }
+
+        .grupo-campo {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
-            width: 90%;
-            max-width: 600px;
         }
 
-        input[type="url"] {
+        input[type="url"], input[type="file"] {
             flex: 1;
-            padding: 10px 15px;
+            padding: 8px 12px;
             border-radius: 6px;
             border: 1px solid #30363d;
-            background-color: #161b22;
+            background-color: #0d1117;
             color: #fff;
-            font-size: 14px;
-            outline: none;
-        }
-
-        input[type="url"]:focus {
-            border-color: #58a6ff;
+            font-size: 13px;
         }
 
         button {
-            padding: 10px 20px;
+            padding: 8px 16px;
             font-size: 14px;
             background-color: #238636;
             color: #ffffff;
@@ -51,9 +56,7 @@
             font-weight: bold;
         }
 
-        button:hover {
-            background-color: #2ea043;
-        }
+        button:hover { background-color: #2ea043; }
 
         #container-canvas {
             background-color: #000;
@@ -62,37 +65,39 @@
             box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
         }
 
-        canvas {
-            display: block;
-        }
-
-        /* O elemento de vídeo real fica escondido */
-        video {
-            display: none;
-        }
+        canvas { display: block; }
+        video { display: none; }
     </style>
 </head>
 <body>
 
-    <h2>Tocador de Vídeo ASCII via URL</h2>
+    <h2>Tocador de Vídeo ASCII</h2>
 
-    <div class="controles">
-        <input type="url" id="url-video" placeholder="Cole o link direto do vídeo (.mp4)" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
-        <button id="btn-carregar">Carregar e Rodar</button>
+    <div class="painel">
+        <label><b>Opção 1: Escolher arquivo do seu computador (Sem erros)</b></label>
+        <input type="file" id="input-arquivo" accept="video/mp4,video/webm">
+
+        <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
+
+        <label><b>Opção 2: URL direta de arquivo (.mp4)</b></label>
+        <div class="grupo-campo">
+            <input type="url" id="input-url" placeholder="URL do vídeo (.mp4)" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
+            <button id="btn-carregar">Rodar URL</button>
+        </div>
     </div>
 
     <div id="container-canvas">
         <canvas id="ascii-canvas"></canvas>
     </div>
 
-    <!-- Elementos ocultos para processamento dos quadros -->
-    <video id="video-oculto" crossOrigin="anonymous" loop playsinline></video>
+    <video id="video-oculto" loop playsinline></video>
     <canvas id="canvas-temp" style="display:none;"></canvas>
 
     <script>
         const ASCII_CHARS = " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
-        const urlInput = document.getElementById('url-video');
+        const inputArquivo = document.getElementById('input-arquivo');
+        const inputUrl = document.getElementById('input-url');
         const btnCarregar = document.getElementById('btn-carregar');
         const video = document.getElementById('video-oculto');
 
@@ -102,23 +107,33 @@
         const canvasTemp = document.getElementById('canvas-temp');
         const ctxTemp = canvasTemp.getContext('2d');
 
-        // Configurações de renderização do ASCII
-        const larguraAscii = 100; // Quantidade de caracteres na largura
+        const larguraAscii = 90;
         const tamanhoFonte = 10;
         const larguraChar = tamanhoFonte * 0.6;
         const alturaChar = tamanhoFonte * 0.9;
 
+        // Carregar do arquivo local do computador
+        inputArquivo.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                video.removeAttribute('crossOrigin');
+                video.src = URL.createObjectURL(file);
+                video.play();
+            }
+        });
+
+        // Carregar via URL externa
         btnCarregar.addEventListener('click', () => {
-            const url = urlInput.value.trim();
+            const url = inputUrl.value.trim();
             if (!url) return;
 
+            video.setAttribute('crossOrigin', 'anonymous');
             video.src = url;
             video.load();
-            video.play().catch(e => alert("Erro ao carregar o vídeo. Verifique se o link é direto (.mp4) e se o site de origem permite CORS."));
+            video.play().catch(() => alert("Esse servidor de vídeo bloqueia acessos externos (Erro CORS). Tente enviar o arquivo localmente pela opção 1."));
         });
 
         video.addEventListener('play', () => {
-            // Ajusta dimensões baseadas na proporção do vídeo
             const proporcao = video.videoHeight / video.videoWidth;
             const alturaAscii = Math.floor(larguraAscii * proporcao * 0.55);
 
@@ -137,36 +152,35 @@
             const colunas = canvasTemp.width;
             const linhas = canvasTemp.height;
 
-            // Desenha o quadro atual do vídeo no canvas temporário
-            ctxTemp.drawImage(video, 0, 0, colunas, linhas);
-            const frameData = ctxTemp.getImageData(0, 0, colunas, linhas).data;
+            try {
+                ctxTemp.drawImage(video, 0, 0, colunas, linhas);
+                const frameData = ctxTemp.getImageData(0, 0, colunas, linhas).data;
 
-            // Limpa o canvas de exibição com fundo preto
-            ctxDisplay.fillStyle = '#000000';
-            ctxDisplay.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
-            ctxDisplay.font = `bold ${tamanhoFonte}px "Courier New", Courier, monospace`;
+                ctxDisplay.fillStyle = '#000000';
+                ctxDisplay.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
+                ctxDisplay.font = `bold ${tamanhoFonte}px "Courier New", Courier, monospace`;
 
-            for (let y = 0; y < linhas; y++) {
-                for (let x = 0; x < colunas; x++) {
-                    const idx = (y * colunas + x) * 4;
-                    const r = frameData[idx];
-                    const g = frameData[idx + 1];
-                    const b = frameData[idx + 2];
+                for (let y = 0; y < linhas; y++) {
+                    for (let x = 0; x < colunas; x++) {
+                        const idx = (y * colunas + x) * 4;
+                        const r = frameData[idx];
+                        const g = frameData[idx + 1];
+                        const b = frameData[idx + 2];
 
-                    // Calcula o brilho para escolher o caractere ASCII
-                    const brilho = (r + g + b) / 3;
-                    const charIdx = Math.floor((brilho / 255) * (ASCII_CHARS.length - 1));
-                    const char = ASCII_CHARS[charIdx];
+                        const brilho = (r + g + b) / 3;
+                        const charIdx = Math.floor((brilho / 255) * (ASCII_CHARS.length - 1));
+                        const char = ASCII_CHARS[charIdx];
 
-                    if (char === ' ') continue;
+                        if (char === ' ') continue;
 
-                    // Desenha a letra com a cor exata do pixel
-                    ctxDisplay.fillStyle = `rgb(${r},${g},${b})`;
-                    ctxDisplay.fillText(char, x * larguraChar, (y + 1) * alturaChar);
+                        ctxDisplay.fillStyle = `rgb(${r},${g},${b})`;
+                        ctxDisplay.fillText(char, x * larguraChar, (y + 1) * alturaChar);
+                    }
                 }
+            } catch (e) {
+                console.error("Erro CORS detectado ao tentar ler os pixels:", e);
             }
 
-            // Solicita o próximo quadro em sincronia com o navegador
             requestAnimationFrame(processarQuadro);
         }
     </script>
