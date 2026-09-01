@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vídeo ASCII Online sem Erro CORS</title>
+    <title>Vídeo ASCII Correção</title>
     <style>
         body {
             background-color: #0d1117;
@@ -58,6 +58,12 @@
 
         button:hover { background-color: #2ea043; }
 
+        #status {
+            margin-bottom: 10px;
+            color: #58a6ff;
+            font-size: 14px;
+        }
+
         #container-canvas {
             background-color: #000;
             padding: 15px;
@@ -74,7 +80,7 @@
     <h2>Tocador de Vídeo ASCII</h2>
 
     <div class="painel">
-        <label><b>Opção 1: Escolher arquivo do seu computador (Sem erros)</b></label>
+        <label><b>Opção 1: Escolher arquivo do seu computador</b></label>
         <input type="file" id="input-arquivo" accept="video/mp4,video/webm">
 
         <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
@@ -86,11 +92,13 @@
         </div>
     </div>
 
+    <div id="status">Aguardando vídeo...</div>
+
     <div id="container-canvas">
         <canvas id="ascii-canvas"></canvas>
     </div>
 
-    <video id="video-oculto" loop playsinline></video>
+    <video id="video-oculto" loop playsinline muted></video>
     <canvas id="canvas-temp" style="display:none;"></canvas>
 
     <script>
@@ -99,6 +107,7 @@
         const inputArquivo = document.getElementById('input-arquivo');
         const inputUrl = document.getElementById('input-url');
         const btnCarregar = document.getElementById('btn-carregar');
+        const statusDiv = document.getElementById('status');
         const video = document.getElementById('video-oculto');
 
         const canvasDisplay = document.getElementById('ascii-canvas');
@@ -112,28 +121,40 @@
         const larguraChar = tamanhoFonte * 0.6;
         const alturaChar = tamanhoFonte * 0.9;
 
-        // Carregar do arquivo local do computador
+        // Carregar arquivo local
         inputArquivo.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
+                statusDiv.textContent = "A carregar vídeo local...";
                 video.removeAttribute('crossOrigin');
                 video.src = URL.createObjectURL(file);
-                video.play();
+                iniciarPlay();
             }
         });
 
-        // Carregar via URL externa
+        // Carregar por URL
         btnCarregar.addEventListener('click', () => {
             const url = inputUrl.value.trim();
             if (!url) return;
 
+            statusDiv.textContent = "A carregar vídeo via URL...";
             video.setAttribute('crossOrigin', 'anonymous');
             video.src = url;
             video.load();
-            video.play().catch(() => alert("Esse servidor de vídeo bloqueia acessos externos (Erro CORS). Tente enviar o arquivo localmente pela opção 1."));
+            iniciarPlay();
         });
 
-        video.addEventListener('play', () => {
+        function iniciarPlay() {
+            video.play().then(() => {
+                statusDiv.textContent = "Vídeo a ser reproduzido!";
+            }).catch(err => {
+                console.error(err);
+                statusDiv.textContent = "Erro de Autoplay ou CORS ao tentar rodar o vídeo.";
+            });
+        }
+
+        // Aguarda os dados do vídeo estarem carregados para calcular as dimensões reais
+        video.addEventListener('loadedmetadata', () => {
             const proporcao = video.videoHeight / video.videoWidth;
             const alturaAscii = Math.floor(larguraAscii * proporcao * 0.55);
 
@@ -142,8 +163,10 @@
 
             canvasDisplay.width = larguraAscii * larguraChar;
             canvasDisplay.height = alturaAscii * alturaChar;
+        });
 
-            processarQuadro();
+        video.addEventListener('play', () => {
+            requestAnimationFrame(processarQuadro);
         });
 
         function processarQuadro() {
@@ -152,33 +175,35 @@
             const colunas = canvasTemp.width;
             const linhas = canvasTemp.height;
 
-            try {
-                ctxTemp.drawImage(video, 0, 0, colunas, linhas);
-                const frameData = ctxTemp.getImageData(0, 0, colunas, linhas).data;
+            if (colunas > 0 && linhas > 0) {
+                try {
+                    ctxTemp.drawImage(video, 0, 0, colunas, linhas);
+                    const frameData = ctxTemp.getImageData(0, 0, colunas, linhas).data;
 
-                ctxDisplay.fillStyle = '#000000';
-                ctxDisplay.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
-                ctxDisplay.font = `bold ${tamanhoFonte}px "Courier New", Courier, monospace`;
+                    ctxDisplay.fillStyle = '#000000';
+                    ctxDisplay.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
+                    ctxDisplay.font = `bold ${tamanhoFonte}px "Courier New", Courier, monospace`;
 
-                for (let y = 0; y < linhas; y++) {
-                    for (let x = 0; x < colunas; x++) {
-                        const idx = (y * colunas + x) * 4;
-                        const r = frameData[idx];
-                        const g = frameData[idx + 1];
-                        const b = frameData[idx + 2];
+                    for (let y = 0; y < linhas; y++) {
+                        for (let x = 0; x < colunas; x++) {
+                            const idx = (y * colunas + x) * 4;
+                            const r = frameData[idx];
+                            const g = frameData[idx + 1];
+                            const b = frameData[idx + 2];
 
-                        const brilho = (r + g + b) / 3;
-                        const charIdx = Math.floor((brilho / 255) * (ASCII_CHARS.length - 1));
-                        const char = ASCII_CHARS[charIdx];
+                            const brilho = (r + g + b) / 3;
+                            const charIdx = Math.floor((brilho / 255) * (ASCII_CHARS.length - 1));
+                            const char = ASCII_CHARS[charIdx];
 
-                        if (char === ' ') continue;
+                            if (char === ' ') continue;
 
-                        ctxDisplay.fillStyle = `rgb(${r},${g},${b})`;
-                        ctxDisplay.fillText(char, x * larguraChar, (y + 1) * alturaChar);
+                            ctxDisplay.fillStyle = `rgb(${r},${g},${b})`;
+                            ctxDisplay.fillText(char, x * larguraChar, (y + 1) * alturaChar);
+                        }
                     }
+                } catch (e) {
+                    statusDiv.textContent = "Erro de segurança CORS ao ler o vídeo de servidor externo.";
                 }
-            } catch (e) {
-                console.error("Erro CORS detectado ao tentar ler os pixels:", e);
             }
 
             requestAnimationFrame(processarQuadro);
