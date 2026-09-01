@@ -3,144 +3,265 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vídeo ASCII Correção Completa</title>
+    <title>ASCII Video Player Neon</title>
     <style>
+        :root {
+            --bg-principal: #0a0c10;
+            --bg-painel: #131720;
+            --cor-primaria: #00f0ff;
+            --cor-secundaria: #ff0055;
+            --cor-texto: #e6edf3;
+            --borda: #21262d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            background-color: #0d1117;
-            color: #ffffff;
+            background-color: var(--bg-principal);
+            color: var(--cor-texto);
+            font-family: 'Segoe UI', monospace, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
-            margin: 0;
-            font-family: monospace;
+            padding: 20px;
         }
 
-        .painel {
-            background-color: #161b22;
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid #30363d;
+        h1 {
+            font-size: 2rem;
+            color: var(--cor-primaria);
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
             margin-bottom: 20px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .container-principal {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        @media (max-width: 850px) {
+            .container-principal {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Painel Lateral */
+        .painel {
+            background: var(--bg-painel);
+            border: 1px solid var(--borda);
+            border-radius: 12px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            width: 90%;
-            max-width: 550px;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
         }
 
+        .secao-titulo {
+            font-size: 0.9rem;
+            color: var(--cor-primaria);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--borda);
+            padding-bottom: 6px;
+        }
+
+        /* Lista / Tabela de Vídeos */
+        .tabela-videos {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .item-video {
+            background: #1c212d;
+            border: 1px solid transparent;
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .item-video:hover {
+            border-color: var(--cor-primaria);
+            background: #252b3b;
+        }
+
+        .item-video.ativo {
+            border-color: var(--cor-secundaria);
+            background: rgba(255, 0, 85, 0.15);
+            color: #fff;
+            font-weight: bold;
+        }
+
+        /* Controles de Entrada */
         .grupo-campo {
             display: flex;
-            gap: 10px;
-        }
-
-        .controles-audio {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background-color: #0d1117;
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #30363d;
+            flex-direction: column;
+            gap: 6px;
         }
 
         input[type="url"], input[type="file"] {
-            flex: 1;
-            padding: 8px 12px;
+            width: 100%;
+            padding: 10px;
             border-radius: 6px;
-            border: 1px solid #30363d;
+            border: 1px solid var(--borda);
             background-color: #0d1117;
-            color: #fff;
-            font-size: 13px;
+            color: var(--cor-texto);
+            font-size: 0.85rem;
+            outline: none;
         }
 
-        input[type="range"] {
-            flex: 1;
-            cursor: pointer;
+        input[type="url"]:focus {
+            border-color: var(--cor-primaria);
         }
 
+        /* Botões */
         button {
-            padding: 8px 16px;
-            font-size: 14px;
-            background-color: #238636;
-            color: #ffffff;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            background: linear-gradient(135deg, #00f0ff, #0077ff);
+            color: #000;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-weight: bold;
+            transition: transform 0.1s, box-shadow 0.2s;
         }
 
-        button:hover { background-color: #2ea043; }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+        }
 
         #btn-play-pause {
-            background-color: #1f6beb;
+            background: linear-gradient(135deg, #ff0055, #ff5500);
+            color: #fff;
             padding: 12px;
-            font-size: 15px;
-            margin-top: 5px;
+        }
+
+        /* Áudio */
+        .controles-audio {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #0d1117;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--borda);
+        }
+
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--cor-primaria);
+            cursor: pointer;
+        }
+
+        /* Visualizador do Canvas */
+        .area-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         #status {
-            margin-bottom: 10px;
-            color: #58a6ff;
-            font-size: 14px;
-            font-weight: bold;
+            margin-bottom: 12px;
+            color: var(--cor-primaria);
+            font-size: 0.9rem;
+            min-height: 20px;
         }
 
         #container-canvas {
             background-color: #000;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--borda);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
         }
 
-        canvas { display: block; }
+        canvas {
+            display: block;
+            border-radius: 4px;
+        }
+
         video { display: none; }
     </style>
 </head>
 <body>
 
-    <h2>Tocador de Vídeo ASCII</h2>
+    <h1>ASCII Video Player</h1>
 
-    <div class="painel">
-        <label><b>Opção 1: Arquivo do computador</b></label>
-        <input type="file" id="input-arquivo" accept="video/mp4,video/webm">
+    <div class="container-principal">
+        <!-- Painel de Controles -->
+        <div class="painel">
+            <div class="secao-titulo">Vídeos do Repositório</div>
+            <div class="tabela-videos" id="lista-videos">
+                <!-- Lista injetada dinamicamente pelo JavaScript -->
+            </div>
 
-        <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
+            <div class="secao-titulo">Outras Fontes</div>
+            <div class="grupo-campo">
+                <input type="file" id="input-arquivo" accept="video/mp4,video/webm">
+            </div>
+            
+            <div class="grupo-campo">
+                <input type="url" id="input-url" placeholder="Cole uma URL direta (.mp4)">
+                <button id="btn-carregar-url">Rodar URL</button>
+            </div>
 
-        <label><b>Opção 2: URL do vídeo (.mp4)</b></label>
-        <div class="grupo-campo">
-            <input type="url" id="input-url" placeholder="URL do vídeo (.mp4)" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
-            <button id="btn-carregar">Carregar URL</button>
+            <div class="secao-titulo">Controles de Áudio</div>
+            <div class="controles-audio">
+                <button id="btn-mute">Mudo</button>
+                <input type="range" id="slider-volume" min="0" max="1" step="0.05" value="0.5">
+                <span id="valor-volume">50%</span>
+            </div>
+
+            <button id="btn-play-pause">▶ Reproduzir / Pausar</button>
         </div>
 
-        <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
-
-        <label><b>Controles de Áudio e Player</b></label>
-        <div class="controles-audio">
-            <button id="btn-mute">Mudar Mudo</button>
-            <input type="range" id="slider-volume" min="0" max="1" step="0.05" value="0.5">
-            <span id="valor-volume">50%</span>
+        <!-- Área de Exibição -->
+        <div class="area-display">
+            <div id="status">Selecione um vídeo da lista ou carregue um arquivo...</div>
+            <div id="container-canvas">
+                <canvas id="ascii-canvas"></canvas>
+            </div>
         </div>
-
-        <button id="btn-play-pause">▶ Play / Pausa</button>
-    </div>
-
-    <div id="status">Aguardando vídeo...</div>
-
-    <div id="container-canvas">
-        <canvas id="ascii-canvas"></canvas>
     </div>
 
     <video id="video-oculto" loop playsinline></video>
     <canvas id="canvas-temp" style="display:none;"></canvas>
 
     <script>
+        // LISTA DE VÍDEOS HOSPEDADOS NO GITHUB
+        // Adicione aqui os nomes dos vídeos salvos na pasta do seu repositório
+        const VIDEOS_GITHUB = [
+            { titulo: "Big Buck Bunny", arquivo: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" },
+            { titulo: "Vídeo 1 (GitHub)", arquivo: "./meu_video1.mp4" },
+            { titulo: "Vídeo 2 (GitHub)", arquivo: "./meu_video2.mp4" }
+        ];
+
         const ASCII_CHARS = " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
+        const listaVideosElem = document.getElementById('lista-videos');
         const inputArquivo = document.getElementById('input-arquivo');
         const inputUrl = document.getElementById('input-url');
-        const btnCarregar = document.getElementById('btn-carregar');
+        const btnCarregarUrl = document.getElementById('btn-carregar-url');
         const btnPlayPause = document.getElementById('btn-play-pause');
         const statusDiv = document.getElementById('status');
         const video = document.getElementById('video-oculto');
@@ -151,18 +272,46 @@
 
         const canvasDisplay = document.getElementById('ascii-canvas');
         const ctxDisplay = canvasDisplay.getContext('2d');
-
         const canvasTemp = document.getElementById('canvas-temp');
         const ctxTemp = canvasTemp.getContext('2d');
 
-        const larguraAscii = 90;
+        const larguraAscii = 95;
         const tamanhoFonte = 10;
         const larguraChar = tamanhoFonte * 0.6;
         const alturaChar = tamanhoFonte * 0.9;
 
         video.volume = 0.5;
 
-        // Atualizar Volume
+        // Renderiza a lista de vídeos
+        function carregarTabelaVideos() {
+            listaVideosElem.innerHTML = '';
+            VIDEOS_GITHUB.forEach((vid, index) => {
+                const item = document.createElement('div');
+                item.className = 'item-video';
+                item.innerHTML = `<span>🎬 ${vid.titulo}</span> <span>▶</span>`;
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.item-video').forEach(el => el.classList.remove('ativo'));
+                    item.classList.add('ativo');
+                    carregarFonteVideo(vid.arquivo, true);
+                });
+                listaVideosElem.appendChild(item);
+            });
+        }
+
+        carregarTabelaVideos();
+
+        function carregarFonteVideo(src, ehExterno) {
+            statusDiv.textContent = "Carregando fonte de vídeo...";
+            if (ehExterno) {
+                video.setAttribute('crossOrigin', 'anonymous');
+            } else {
+                video.removeAttribute('crossOrigin');
+            }
+            video.src = src;
+            video.load();
+        }
+
+        // Controles de Volume e Mudo
         sliderVolume.addEventListener('input', (e) => {
             const vol = parseFloat(e.target.value);
             video.volume = vol;
@@ -170,16 +319,14 @@
             valorVolume.textContent = Math.round(vol * 100) + '%';
         });
 
-        // Mudo
         btnMute.addEventListener('click', () => {
             video.muted = !video.muted;
             valorVolume.textContent = video.muted ? 'Mudo' : Math.round(video.volume * 100) + '%';
         });
 
-        // Botão Play/Pausa manual
         btnPlayPause.addEventListener('click', () => {
             if (!video.src) {
-                statusDiv.textContent = "Escolha um arquivo ou URL primeiro!";
+                statusDiv.textContent = "Selecione ou envie um vídeo primeiro!";
                 return;
             }
             if (video.paused) {
@@ -191,44 +338,34 @@
             }
         });
 
-        // Selecionar do computador
         inputArquivo.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
-                statusDiv.textContent = "Carregando arquivo local...";
-                video.removeAttribute('crossOrigin');
-                video.src = URL.createObjectURL(file);
-                video.load();
+                document.querySelectorAll('.item-video').forEach(el => el.classList.remove('ativo'));
+                carregarFonteVideo(URL.createObjectURL(file), false);
             }
         });
 
-        // Selecionar via URL
-        btnCarregar.addEventListener('click', () => {
+        btnCarregarUrl.addEventListener('click', () => {
             const url = inputUrl.value.trim();
-            if (!url) return;
-
-            statusDiv.textContent = "Carregando via URL...";
-            video.setAttribute('crossOrigin', 'anonymous');
-            video.src = url;
-            video.load();
+            if (url) {
+                document.querySelectorAll('.item-video').forEach(el => el.classList.remove('ativo'));
+                carregarFonteVideo(url, true);
+            }
         });
 
-        // Quando o vídeo carrega os metadados
         video.addEventListener('loadeddata', () => {
-            statusDiv.textContent = "Vídeo carregado! Clique em '▶ Play / Pausa'.";
-            
+            statusDiv.textContent = "Pronto! Clique em Play se não iniciar sozinho.";
             const proporcao = video.videoHeight / video.videoWidth;
             const alturaAscii = Math.floor(larguraAscii * proporcao * 0.55);
 
             canvasTemp.width = larguraAscii;
             canvasTemp.height = alturaAscii;
-
             canvasDisplay.width = larguraAscii * larguraChar;
             canvasDisplay.height = alturaAscii * alturaChar;
 
-            // Tenta dar play automático
-            video.play().catch(err => {
-                statusDiv.textContent = "Aperte '▶ Play / Pausa' para iniciar o vídeo.";
+            video.play().catch(() => {
+                statusDiv.textContent = "Clique em '▶ Reproduzir / Pausar' para iniciar o som e o vídeo.";
             });
         });
 
@@ -269,7 +406,7 @@
                         }
                     }
                 } catch (e) {
-                    statusDiv.textContent = "Erro CORS ao ler o vídeo da URL externa. Tente usar o arquivo do computador.";
+                    statusDiv.textContent = "Erro de bloqueio CORS no vídeo externo.";
                 }
             }
 
