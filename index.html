@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vídeo ASCII com Som e Controle de Volume</title>
+    <title>Vídeo ASCII Correção Completa</title>
     <style>
         body {
             background-color: #0d1117;
@@ -73,10 +73,18 @@
 
         button:hover { background-color: #2ea043; }
 
+        #btn-play-pause {
+            background-color: #1f6beb;
+            padding: 12px;
+            font-size: 15px;
+            margin-top: 5px;
+        }
+
         #status {
             margin-bottom: 10px;
             color: #58a6ff;
             font-size: 14px;
+            font-weight: bold;
         }
 
         #container-canvas {
@@ -95,25 +103,27 @@
     <h2>Tocador de Vídeo ASCII</h2>
 
     <div class="painel">
-        <label><b>Opção 1: Escolher arquivo do seu computador</b></label>
+        <label><b>Opção 1: Arquivo do computador</b></label>
         <input type="file" id="input-arquivo" accept="video/mp4,video/webm">
 
         <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
 
-        <label><b>Opção 2: URL direta de arquivo (.mp4)</b></label>
+        <label><b>Opção 2: URL do vídeo (.mp4)</b></label>
         <div class="grupo-campo">
             <input type="url" id="input-url" placeholder="URL do vídeo (.mp4)" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
-            <button id="btn-carregar">Rodar URL</button>
+            <button id="btn-carregar">Carregar URL</button>
         </div>
 
         <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
 
-        <label><b>Controle de Áudio</b></label>
+        <label><b>Controles de Áudio e Player</b></label>
         <div class="controles-audio">
             <button id="btn-mute">Mudar Mudo</button>
             <input type="range" id="slider-volume" min="0" max="1" step="0.05" value="0.5">
             <span id="valor-volume">50%</span>
         </div>
+
+        <button id="btn-play-pause">▶ Play / Pausa</button>
     </div>
 
     <div id="status">Aguardando vídeo...</div>
@@ -121,3 +131,150 @@
     <div id="container-canvas">
         <canvas id="ascii-canvas"></canvas>
     </div>
+
+    <video id="video-oculto" loop playsinline></video>
+    <canvas id="canvas-temp" style="display:none;"></canvas>
+
+    <script>
+        const ASCII_CHARS = " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+
+        const inputArquivo = document.getElementById('input-arquivo');
+        const inputUrl = document.getElementById('input-url');
+        const btnCarregar = document.getElementById('btn-carregar');
+        const btnPlayPause = document.getElementById('btn-play-pause');
+        const statusDiv = document.getElementById('status');
+        const video = document.getElementById('video-oculto');
+
+        const btnMute = document.getElementById('btn-mute');
+        const sliderVolume = document.getElementById('slider-volume');
+        const valorVolume = document.getElementById('valor-volume');
+
+        const canvasDisplay = document.getElementById('ascii-canvas');
+        const ctxDisplay = canvasDisplay.getContext('2d');
+
+        const canvasTemp = document.getElementById('canvas-temp');
+        const ctxTemp = canvasTemp.getContext('2d');
+
+        const larguraAscii = 90;
+        const tamanhoFonte = 10;
+        const larguraChar = tamanhoFonte * 0.6;
+        const alturaChar = tamanhoFonte * 0.9;
+
+        video.volume = 0.5;
+
+        // Atualizar Volume
+        sliderVolume.addEventListener('input', (e) => {
+            const vol = parseFloat(e.target.value);
+            video.volume = vol;
+            video.muted = false;
+            valorVolume.textContent = Math.round(vol * 100) + '%';
+        });
+
+        // Mudo
+        btnMute.addEventListener('click', () => {
+            video.muted = !video.muted;
+            valorVolume.textContent = video.muted ? 'Mudo' : Math.round(video.volume * 100) + '%';
+        });
+
+        // Botão Play/Pausa manual
+        btnPlayPause.addEventListener('click', () => {
+            if (!video.src) {
+                statusDiv.textContent = "Escolha um arquivo ou URL primeiro!";
+                return;
+            }
+            if (video.paused) {
+                video.play();
+                statusDiv.textContent = "Reproduzindo...";
+            } else {
+                video.pause();
+                statusDiv.textContent = "Pausado.";
+            }
+        });
+
+        // Selecionar do computador
+        inputArquivo.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                statusDiv.textContent = "Carregando arquivo local...";
+                video.removeAttribute('crossOrigin');
+                video.src = URL.createObjectURL(file);
+                video.load();
+            }
+        });
+
+        // Selecionar via URL
+        btnCarregar.addEventListener('click', () => {
+            const url = inputUrl.value.trim();
+            if (!url) return;
+
+            statusDiv.textContent = "Carregando via URL...";
+            video.setAttribute('crossOrigin', 'anonymous');
+            video.src = url;
+            video.load();
+        });
+
+        // Quando o vídeo carrega os metadados
+        video.addEventListener('loadeddata', () => {
+            statusDiv.textContent = "Vídeo carregado! Clique em '▶ Play / Pausa'.";
+            
+            const proporcao = video.videoHeight / video.videoWidth;
+            const alturaAscii = Math.floor(larguraAscii * proporcao * 0.55);
+
+            canvasTemp.width = larguraAscii;
+            canvasTemp.height = alturaAscii;
+
+            canvasDisplay.width = larguraAscii * larguraChar;
+            canvasDisplay.height = alturaAscii * alturaChar;
+
+            // Tenta dar play automático
+            video.play().catch(err => {
+                statusDiv.textContent = "Aperte '▶ Play / Pausa' para iniciar o vídeo.";
+            });
+        });
+
+        video.addEventListener('play', () => {
+            requestAnimationFrame(processarQuadro);
+        });
+
+        function processarQuadro() {
+            if (video.paused || video.ended) return;
+
+            const colunas = canvasTemp.width;
+            const linhas = canvasTemp.height;
+
+            if (colunas > 0 && linhas > 0) {
+                try {
+                    ctxTemp.drawImage(video, 0, 0, colunas, linhas);
+                    const frameData = ctxTemp.getImageData(0, 0, colunas, linhas).data;
+
+                    ctxDisplay.fillStyle = '#000000';
+                    ctxDisplay.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
+                    ctxDisplay.font = `bold ${tamanhoFonte}px "Courier New", Courier, monospace`;
+
+                    for (let y = 0; y < linhas; y++) {
+                        for (let x = 0; x < colunas; x++) {
+                            const idx = (y * colunas + x) * 4;
+                            const r = frameData[idx];
+                            const g = frameData[idx + 1];
+                            const b = frameData[idx + 2];
+
+                            const brilho = (r + g + b) / 3;
+                            const charIdx = Math.floor((brilho / 255) * (ASCII_CHARS.length - 1));
+                            const char = ASCII_CHARS[charIdx];
+
+                            if (char === ' ') continue;
+
+                            ctxDisplay.fillStyle = `rgb(${r},${g},${b})`;
+                            ctxDisplay.fillText(char, x * larguraChar, (y + 1) * alturaChar);
+                        }
+                    }
+                } catch (e) {
+                    statusDiv.textContent = "Erro CORS ao ler o vídeo da URL externa. Tente usar o arquivo do computador.";
+                }
+            }
+
+            requestAnimationFrame(processarQuadro);
+        }
+    </script>
+</body>
+</html>
