@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vídeo ASCII Correção</title>
+    <title>Vídeo ASCII com Som e Controle de Volume</title>
     <style>
         body {
             background-color: #0d1117;
@@ -35,6 +35,16 @@
             gap: 10px;
         }
 
+        .controles-audio {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background-color: #0d1117;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+        }
+
         input[type="url"], input[type="file"] {
             flex: 1;
             padding: 8px 12px;
@@ -43,6 +53,11 @@
             background-color: #0d1117;
             color: #fff;
             font-size: 13px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            cursor: pointer;
         }
 
         button {
@@ -90,6 +105,15 @@
             <input type="url" id="input-url" placeholder="URL do vídeo (.mp4)" value="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4">
             <button id="btn-carregar">Rodar URL</button>
         </div>
+
+        <hr style="border:0; border-top:1px solid #30363d; width:100%; margin: 5px 0;">
+
+        <label><b>Controle de Áudio</b></label>
+        <div class="controles-audio">
+            <button id="btn-mute">Mudar Mudo</button>
+            <input type="range" id="slider-volume" min="0" max="1" step="0.05" value="0.5">
+            <span id="valor-volume">50%</span>
+        </div>
     </div>
 
     <div id="status">Aguardando vídeo...</div>
@@ -97,117 +121,3 @@
     <div id="container-canvas">
         <canvas id="ascii-canvas"></canvas>
     </div>
-
-    <video id="video-oculto" loop playsinline muted></video>
-    <canvas id="canvas-temp" style="display:none;"></canvas>
-
-    <script>
-        const ASCII_CHARS = " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
-
-        const inputArquivo = document.getElementById('input-arquivo');
-        const inputUrl = document.getElementById('input-url');
-        const btnCarregar = document.getElementById('btn-carregar');
-        const statusDiv = document.getElementById('status');
-        const video = document.getElementById('video-oculto');
-
-        const canvasDisplay = document.getElementById('ascii-canvas');
-        const ctxDisplay = canvasDisplay.getContext('2d');
-
-        const canvasTemp = document.getElementById('canvas-temp');
-        const ctxTemp = canvasTemp.getContext('2d');
-
-        const larguraAscii = 90;
-        const tamanhoFonte = 10;
-        const larguraChar = tamanhoFonte * 0.6;
-        const alturaChar = tamanhoFonte * 0.9;
-
-        // Carregar arquivo local
-        inputArquivo.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                statusDiv.textContent = "A carregar vídeo local...";
-                video.removeAttribute('crossOrigin');
-                video.src = URL.createObjectURL(file);
-                iniciarPlay();
-            }
-        });
-
-        // Carregar por URL
-        btnCarregar.addEventListener('click', () => {
-            const url = inputUrl.value.trim();
-            if (!url) return;
-
-            statusDiv.textContent = "A carregar vídeo via URL...";
-            video.setAttribute('crossOrigin', 'anonymous');
-            video.src = url;
-            video.load();
-            iniciarPlay();
-        });
-
-        function iniciarPlay() {
-            video.play().then(() => {
-                statusDiv.textContent = "Vídeo a ser reproduzido!";
-            }).catch(err => {
-                console.error(err);
-                statusDiv.textContent = "Erro de Autoplay ou CORS ao tentar rodar o vídeo.";
-            });
-        }
-
-        // Aguarda os dados do vídeo estarem carregados para calcular as dimensões reais
-        video.addEventListener('loadedmetadata', () => {
-            const proporcao = video.videoHeight / video.videoWidth;
-            const alturaAscii = Math.floor(larguraAscii * proporcao * 0.55);
-
-            canvasTemp.width = larguraAscii;
-            canvasTemp.height = alturaAscii;
-
-            canvasDisplay.width = larguraAscii * larguraChar;
-            canvasDisplay.height = alturaAscii * alturaChar;
-        });
-
-        video.addEventListener('play', () => {
-            requestAnimationFrame(processarQuadro);
-        });
-
-        function processarQuadro() {
-            if (video.paused || video.ended) return;
-
-            const colunas = canvasTemp.width;
-            const linhas = canvasTemp.height;
-
-            if (colunas > 0 && linhas > 0) {
-                try {
-                    ctxTemp.drawImage(video, 0, 0, colunas, linhas);
-                    const frameData = ctxTemp.getImageData(0, 0, colunas, linhas).data;
-
-                    ctxDisplay.fillStyle = '#000000';
-                    ctxDisplay.fillRect(0, 0, canvasDisplay.width, canvasDisplay.height);
-                    ctxDisplay.font = `bold ${tamanhoFonte}px "Courier New", Courier, monospace`;
-
-                    for (let y = 0; y < linhas; y++) {
-                        for (let x = 0; x < colunas; x++) {
-                            const idx = (y * colunas + x) * 4;
-                            const r = frameData[idx];
-                            const g = frameData[idx + 1];
-                            const b = frameData[idx + 2];
-
-                            const brilho = (r + g + b) / 3;
-                            const charIdx = Math.floor((brilho / 255) * (ASCII_CHARS.length - 1));
-                            const char = ASCII_CHARS[charIdx];
-
-                            if (char === ' ') continue;
-
-                            ctxDisplay.fillStyle = `rgb(${r},${g},${b})`;
-                            ctxDisplay.fillText(char, x * larguraChar, (y + 1) * alturaChar);
-                        }
-                    }
-                } catch (e) {
-                    statusDiv.textContent = "Erro de segurança CORS ao ler o vídeo de servidor externo.";
-                }
-            }
-
-            requestAnimationFrame(processarQuadro);
-        }
-    </script>
-</body>
-</html>
